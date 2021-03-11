@@ -3,9 +3,11 @@ InfoTrack Tech Test
 Developed By: Chamal Pulasthi | Completed On: 12/03/2021
 
 The Challenge
+
 The main challenge I saw was to extract the data from the static search pages without sacrificing the cleanliness of the code. 
 
 The approach
+
 1)	Separated the solution into few projects/layers 
 -	Web  - the .net core web api project
 -	Domain – layer for more concrete business logic and services
@@ -22,4 +24,5 @@ The approach
 10)	Ajax call to the API delivers both summarized and the detailed results to the UI.
 
 What more can we do?
+
 What I really wanted to do (unfortunately the time did not permit) was to implement a repository pattern using the EF core with a sqlLite DB and log the handled search requests into a simple table so that we can show a history of results. Assuming the results change (although the static results probably never change) we can show the history in a chart which will look really nice. 😊
