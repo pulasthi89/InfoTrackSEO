@@ -1,0 +1,201 @@
+﻿@page
+
+<style>
+    .header {
+        background: #212121;
+        padding: 13px 0px;
+        margin-bottom: 8px;
+    }
+
+    .errorInput {
+        border-color: red;
+    }
+
+    .errorSummary {
+        font-size: 13px;
+        font-weight: 600;
+        color: red;
+    }
+
+    .loading {
+        font-weight: 400;
+    }
+
+    #spnOccurrencesDescription {
+        font-weight: 600;
+    }
+
+    label {
+        width: 120px;
+        display: inline-block;
+    }
+    input[type='text']{
+        width:280px;
+    }
+    select {
+        width: 280px;
+    }
+    .author {
+        font-size: 12px;
+        font-weight: 600;
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+    }
+</style>
+@*To keep things simple I have used CDNs to get libraries. Google for jquery and Cloudflare for Knockout js*@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/knockout.mapping/2.4.1/knockout.mapping.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/knockout-validation/2.0.4/knockout.validation.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+
+        ko.validation.init({
+
+            registerExtenders: true,
+            messagesOnModified: true,
+            insertMessages: false,
+            parseInputAttributes: true,
+            decorateInputElement: true,
+            errorElementClass: 'errorInput',
+            messageTemplate: null
+
+        }, true);
+
+        var viewModel = {
+            supportedSearchEngines: ko.observableArray(['Google', 'Bing']),
+            searchEngine: ko.observable().extend({
+                required: {
+                    message: "Search engine is required"
+                }
+            }),
+            keywords: ko.observable().extend({
+                required: {
+                    message: 'Keywords are required'
+                }
+            }),
+            url: ko.observable().extend({
+                required: {
+                    message: 'URL is required'
+                }
+            }),
+            occurrencesDescription: ko.observable(''),
+            searchResults: ko.observableArray([]),
+            isLoading: ko.observable(false),
+            search: function () {
+                $('#dvResults').hide();
+                $('#lblErrors').hide();
+                $('#lblErrors').html('');
+
+                if (viewModel.errors().length === 0) {
+                    viewModel.isLoading(true);
+                    //Sending the Ajax request
+                    $.ajax({
+                        url: '/api/search?searchengine=' + viewModel.searchEngine() + '&keywords=' + viewModel.keywords() + '&url=' + viewModel.url(),
+                        type: "GET",
+                        dataType: "json",
+                        success: function (data) {
+                            $('#dvResults').show();
+                            viewModel.occurrencesDescription(data.occurrencesDescription);
+                            viewModel.searchResults($.map(data.occurrences, function (result) {
+                                return {
+                                    PageNumber: result.pageNumber,
+                                    ResultSetNumber: result.resultSetNumber,
+                                    ResultUrl: result.resultUrl,
+                                };
+                            }));
+                            viewModel.isLoading(false);
+                        },
+                        error: function (xhr, textStatus, errorThrown) {
+                            $('#lblErrors').show();
+                            if (xhr.responseJSON)
+                                $('#lblErrors').html(xhr.responseJSON.errorMessage);
+                            else
+                                $('#lblErrors').html(xhr.responseText)
+
+                            viewModel.isLoading(false);
+                        }
+                    });
+
+                } else {
+                    viewModel.errors.showAllMessages();
+                    var errorMsg = '';
+                    for (var i = 0; i < viewModel.errors().length; i++) {
+                        errorMsg += "<br/> " + viewModel.errors()[i];
+                    }
+                    $('#lblErrors').show();
+                    $('#lblErrors').html(errorMsg);
+                }
+
+
+            }
+        };
+
+        viewModel.errors = ko.validation.group(viewModel);
+        ko.applyBindings(viewModel);
+    });
+
+</script>
+
+<div class="header"></div>
+<div class="logo">
+    <a href="https://www.infotrack.com.au/" rel="home">
+        <img src="https://www.infotrack.com.au/wp-content/uploads/InfoTrack_logo_blue_v2_cropped_rgb.png" width="150" height="55" alt="InfoTrack Logo">
+    </a>
+</div>
+<h1>Welcome to InfoTrack SEO Performance Monitor</h1>
+
+<p>This SEO performance monitor tool is designed to analyze the search results from multiple search engines.</p>
+<p>Please start by selecting the desired search engine and then entering the keywords to be searched on the selected search engine and finally a URL to be monitored in the search results.</p>
+<br />
+<p>
+    <label for="cmbSearchEngine">Search Engine:</label>
+    <select id="cmbSearchEngine" data-bind="options: supportedSearchEngines , value: searchEngine">
+    </select>
+</p>
+<p>
+    <label for="txtKeywords">Keywords:</label>
+    <input type="text" id="txtKeywords" data-bind="value: keywords" />
+</p>
+<p>
+    <label for="txtUrl">URL:</label>
+    <input type="text" id="txtUrl" data-bind="value: url" />
+</p>
+<p>
+    <input type="button" id="btnSearch" value="Search" data-bind="click:search" />
+</p>
+
+<p>
+    <span id="lblErrors" class="errorSummary"></span>
+</p>
+
+<div id='loading' class="loading" data-bind="visible: isLoading">Loading...</div>
+
+
+
+<div id="dvResults" style="display:none;">
+    <h3>Results</h3>
+
+    <div data-bind="visible: searchResults().length <= 0">
+        <p>Given URL(<span data-bind="text:url"></span>) did not appear in any result sets</p>
+    </div>
+
+    <div data-bind="visible: searchResults().length > 0">
+        <p>Given URL(<span data-bind="text:url"></span>) appeard in the number <span id="spnOccurrencesDescription" data-bind="text: occurrencesDescription"></span> result set(s)</p>
+
+        <h4>Details</h4>
+
+        <ul data-bind="foreach: searchResults">
+            <li title="Click to visit the result">
+                <a target="_blank" data-bind="attr: { href: ResultUrl }">
+                    Page No. :  <span data-bind="text: PageNumber"></span>
+                    | Result Set No. : <span data-bind="text: ResultSetNumber"></span>
+                </a>
+
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="author">Developed by Chamal Pulasthi for InfoTrack - March 2021</div>
